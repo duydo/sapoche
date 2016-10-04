@@ -1,2 +1,2 @@
-# sapoche
-Social Data Platform
+# Sapoche - A Social Data Platform
+In  development...
