@@ -91,6 +91,7 @@ class ApiPath(object):
 
 
 class Api(object):
+    default_params = {}
     _session = None
     _base_url = None
 
@@ -115,6 +116,7 @@ class Api(object):
 
     def __call__(self, method, path, **kwargs):
         try:
+            kwargs = self._merge_params(**kwargs)
             response = self._session.request(method, self.url_for(path), **kwargs)
             response.raise_for_status()
             return ApiResponse(response.status_code, response.json(object_hook=JsonObject))
@@ -122,6 +124,13 @@ class Api(object):
             raise ApiException(status=e.response.status_code, message=e.response.text)
         except Exception as e:
             raise ApiException(e)
+
+    def _merge_params(self, **kwargs):
+        if self.default_params:
+            params = kwargs.pop('params', {}) or {}
+            params.update(self.default_params)
+            kwargs.update({'params': params})
+        return kwargs
 
     @staticmethod
     def url_for(path):
@@ -133,9 +142,11 @@ class OAuth2Api(Api):
         import requests_oauthlib
         super(OAuth2Api, self).__init__(base_url, requests_oauthlib.OAuth2Session())
 
-    def use_access_token(self, access_token):
+    def use_access_token(self, access_token, included_params=True):
         if access_token:
             self._session.token = {'access_token': access_token}
+            if included_params:
+                self.default_params.update(self._session.token)
         return self
 
 

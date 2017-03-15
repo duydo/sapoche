@@ -17,22 +17,21 @@ def facebook():
 
 def instagram():
     api = OAuth2Api('https://api.instagram.com/v1')
-    params = {'access_token': '1723335225.f71bc46.7f63afcbe3a64635b3531ea2c5753ba5'}
+    api.use_access_token('1723335225.f71bc46.7f63afcbe3a64635b3531ea2c5753ba5')
     """Get information about the owner of the access token: /users/self"""
-    response = api.users.self.get(params).data
+    response = api.users.self.get().data
     print response
 
     """Get information about a user: /users/user-id"""
-    response = api.users['1723335225'].get(params).data
+    response = api.users['1723335225'].get().data
     print response
 
     """Get most recent media published by a user: /users/user-id/media/recent"""
-    response = api.users['1723335225'].media.recent.get(params).data
+    response = api.users['1723335225'].media.recent.get().data
     print response
 
     """Get a list of users matching the query: /users/search?q=trung"""
-    params.update({'q': 'trung'})
-    response = api.users.search.get(params).data
+    response = api.users.search.get({'q': 'trung'}).data
     print response
 
 
