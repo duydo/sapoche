@@ -36,9 +36,9 @@ class Facebook(OAuth2Api):
     BASE_URL = 'https://graph.facebook.com'
     VERSION = 'v2.8'
 
-    def __init__(self, token=None, version=None):
+    def __init__(self, access_token=None, version=None):
         super(Facebook, self).__init__('%s/%s' % (self.BASE_URL, version or self.VERSION))
-        self.use_auth(token)
+        self.use_access_token(access_token)
 
     def node(self, node_id, **kwargs):
         return self[check_not_empty(node_id)].get(kwargs).data

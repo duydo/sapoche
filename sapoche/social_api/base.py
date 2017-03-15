@@ -130,10 +130,10 @@ class Api(object):
 
 class OAuth2Api(Api):
     def __init__(self, base_url=None):
-        from requests_oauthlib import OAuth2Session
-        super(OAuth2Api, self).__init__(base_url, OAuth2Session())
+        import requests_oauthlib
+        super(OAuth2Api, self).__init__(base_url, requests_oauthlib.OAuth2Session())
 
-    def use_auth(self, access_token):
+    def use_access_token(self, access_token):
         if access_token:
             self._session.token = {'access_token': access_token}
         return self
@@ -142,10 +142,10 @@ class OAuth2Api(Api):
 class OAuth1Api(Api):
     def __init__(self, base_url=None, client_key=None, client_secret=None, resource_owner_key=None,
                  resource_owner_secret=None):
-        from requests_oauthlib import OAuth1Session
+        import requests_oauthlib
         super(OAuth1Api, self).__init__(
             base_url,
-            OAuth1Session(
+            requests_oauthlib.OAuth1Session(
                 client_key=client_key,
                 client_secret=client_secret,
                 resource_owner_key=resource_owner_key,
@@ -153,7 +153,7 @@ class OAuth1Api(Api):
             )
         )
 
-    def use_auth(self, client_key=None, client_secret=None, resource_owner_key=None, resource_owner_secret=None):
+    def use_key(self, client_key=None, client_secret=None, resource_owner_key=None, resource_owner_secret=None):
         self._session.client_key = client_key
         self._session.client_secret = client_secret
         self._session.resource_owner_key = resource_owner_key
