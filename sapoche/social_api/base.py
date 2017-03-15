@@ -1,7 +1,8 @@
 import requests
-from oauthlib.oauth2 import BackendApplicationClient
-from requests import RequestException, HTTPError, Session
+from requests import HTTPError
 from requests_oauthlib import OAuth2Session
+
+from sapoche.helpers.preconditions import check_type, check_not_none, check_not_empty
 
 __author__ = 'duydo'
 
@@ -16,7 +17,7 @@ class JsonObject(dict):
         raise AttributeError('%s instances are read-only.' % self.__class__.__name__)
 
     def __repr__(self):
-        return '<%s: %s>' % (self.__class__.__name__, dict.__repr__(self))
+        return '<%s %s>' % (self.__class__.__name__, dict.__repr__(self))
 
     __delattr__ = __setitem__ = __delitem__ = __setattr__
 
@@ -36,16 +37,23 @@ class ApiResponse(object):
         self.status = status
         self.data = data
 
+    def __repr__(self):
+        return '<%s [%s]>' % (self.__class__.__name__, self.status)
+
 
 class ApiPath(object):
     def __init__(self, api=None, path=None):
-        self._api = api
+        self._api = check_type(api, Api)
         self._path = path
 
     def __getattr__(self, path):
         return self[path]
 
     def __getitem__(self, path):
+        return self + ApiPath(self._api, path)
+
+    def __add__(self, other):
+        path = str(other)
         if self._path is not None:
             path = '%s/%s' % (self._path, path)
         return ApiPath(self._api, path)
@@ -54,7 +62,7 @@ class ApiPath(object):
         return self._path
 
     def __repr__(self):
-        return '<ApiPath: %s>' % self._path
+        return '<%s [%s]>' % (self.__class__.__name__, self._path)
 
     def get(self, params=None, **kwargs):
         """Send GET request.
@@ -90,6 +98,7 @@ class Api(object):
     def __init__(self, base_url=None, session=None):
         self._base_url = base_url
         self._session = session or requests.Session()
+        self._base_path = ApiPath(self, base_url)
 
     def __enter__(self):
         return self
@@ -98,19 +107,33 @@ class Api(object):
         self._session.close()
 
     def __getattr__(self, path):
-        return ApiPath(self, path)
+        if path.startswith(self._base_url):
+            """This case happens when results have pagination"""
+            return ApiPath(self, path)
+        return self._base_path[path]
 
     __getitem__ = __getattr__
 
-    def __call__(self, method, url, **kwargs):
+    def __call__(self, method, path, **kwargs):
         try:
-            _url = str(url)
-            _url = _url if _url.startswith(self._base_url) else '%s/%s' % (self._base_url, _url)
-            response = self._session.request(method, _url, **kwargs)
+            response = self._session.request(method, self.url_for(path), **kwargs)
             response.raise_for_status()
             return ApiResponse(response.status_code, response.json(object_hook=JsonObject))
         except HTTPError as e:
             raise ApiException(status=e.response.status_code, message=e.response.text)
         except Exception as e:
-            print e
             raise ApiException(e)
+
+    @staticmethod
+    def url_for(path):
+        return str(path)
+
+
+class OAuth2Api(Api):
+    def __init__(self, base_url=None):
+        super(OAuth2Api, self).__init__(base_url, OAuth2Session())
+
+    def use_token(self, access_token):
+        if access_token:
+            self._session.token = {'access_token': access_token}
+        return self

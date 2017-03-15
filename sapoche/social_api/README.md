@@ -1,4 +1,5 @@
-Sapoche Social API
-==================
+Sapoche Social API - One API for all social networks
+====================================================
 
-Provide simple APIs to get data from multiple social networks: Facebook, Instagram...
+
+
