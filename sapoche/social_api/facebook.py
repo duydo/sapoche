@@ -1,5 +1,5 @@
 from sapoche.helpers.preconditions import check_not_empty
-from sapoche.social_api.base import OAuth2Api
+from sapoche.social_api.base import OAuth2Api, ApiException
 
 __author__ = 'duydo'
 
@@ -28,6 +28,7 @@ class Cursor(object):
         if 'paging' in self._r.data and 'next' in self._r.data.paging:
             self._r = self._api[self._r.data.paging['next']].get()
             return self._r.data.data
+
         raise StopIteration
 
 
@@ -37,7 +38,7 @@ class Facebook(OAuth2Api):
 
     def __init__(self, token=None, version=None):
         super(Facebook, self).__init__('%s/%s' % (self.BASE_URL, version or self.VERSION))
-        self.use_token(token)
+        self.use_auth(token)
 
     def node(self, node_id, **kwargs):
         return self[check_not_empty(node_id)].get(kwargs).data

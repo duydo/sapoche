@@ -1,8 +1,7 @@
 import requests
 from requests import HTTPError
-from requests_oauthlib import OAuth2Session
 
-from sapoche.helpers.preconditions import check_type, check_not_none, check_not_empty
+from sapoche.helpers.preconditions import check_type
 
 __author__ = 'duydo'
 
@@ -131,9 +130,32 @@ class Api(object):
 
 class OAuth2Api(Api):
     def __init__(self, base_url=None):
+        from requests_oauthlib import OAuth2Session
         super(OAuth2Api, self).__init__(base_url, OAuth2Session())
 
-    def use_token(self, access_token):
+    def use_auth(self, access_token):
         if access_token:
             self._session.token = {'access_token': access_token}
+        return self
+
+
+class OAuth1Api(Api):
+    def __init__(self, base_url=None, client_key=None, client_secret=None, resource_owner_key=None,
+                 resource_owner_secret=None):
+        from requests_oauthlib import OAuth1Session
+        super(OAuth1Api, self).__init__(
+            base_url,
+            OAuth1Session(
+                client_key=client_key,
+                client_secret=client_secret,
+                resource_owner_key=resource_owner_key,
+                resource_owner_secret=resource_owner_secret
+            )
+        )
+
+    def use_auth(self, client_key=None, client_secret=None, resource_owner_key=None, resource_owner_secret=None):
+        self._session.client_key = client_key
+        self._session.client_secret = client_secret
+        self._session.resource_owner_key = resource_owner_key
+        self._session.resource_owner_secret = resource_owner_secret
         return self
