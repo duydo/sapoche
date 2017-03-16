@@ -1,19 +1,20 @@
 import requests
-from requests import HTTPError
 
-from sapoche.helpers.preconditions import check_type
+from sapoche.helpers.preconditions import check_type, check_not_empty
 
 __author__ = 'duydo'
 
 
 class JsonObject(dict):
+    """Read-only Json Object"""
+
     def __getattr__(self, name):
         if name in self:
             return self[name]
-        raise AttributeError('%s has no property named %s.' % (self.__class__.__name__, name))
+        raise AttributeError('Property "%s" not found in %s.' % (name, self.__class__.__name__))
 
     def __setattr__(self, *args):
-        raise AttributeError('%s instances are read-only.' % self.__class__.__name__)
+        raise AttributeError('%s is read-only object.' % self.__class__.__name__)
 
     def __repr__(self):
         return '<%s %s>' % (self.__class__.__name__, dict.__repr__(self))
@@ -92,11 +93,9 @@ class ApiPath(object):
 
 class Api(object):
     default_params = {}
-    _session = None
-    _base_url = None
 
     def __init__(self, base_url=None, session=None):
-        self._base_url = base_url
+        self._base_url = check_not_empty(base_url)
         self._session = session or requests.Session()
         self._base_path = ApiPath(self, base_url)
 
@@ -108,7 +107,7 @@ class Api(object):
 
     def __getattr__(self, path):
         if path.startswith(self._base_url):
-            """This case happens when results have pagination"""
+            """This case happens when results have pagination links"""
             return ApiPath(self, path)
         return self._base_path[path]
 
@@ -116,25 +115,31 @@ class Api(object):
 
     def __call__(self, method, path, **kwargs):
         try:
-            kwargs = self._merge_params(**kwargs)
-            response = self._session.request(method, self.url_for(path), **kwargs)
+            _kwargs = self._merge_kwargs(**kwargs)
+            response = self._session.request(method, self.url_for(path), **_kwargs)
             response.raise_for_status()
             return ApiResponse(response.status_code, response.json(object_hook=JsonObject))
-        except HTTPError as e:
-            raise ApiException(status=e.response.status_code, message=e.response.text)
+        except requests.HTTPError as e:
+            self.handle_exception(ApiException(e.response.text, e.response.status_code))
         except Exception as e:
-            raise ApiException(e)
+            self.handle_exception(ApiException(e))
 
-    def _merge_params(self, **kwargs):
-        if self.default_params:
-            params = kwargs.pop('params', {}) or {}
-            params.update(self.default_params)
-            kwargs.update({'params': params})
-        return kwargs
+    def _merge_kwargs(self, **kwargs):
+        if not self.default_params:
+            return kwargs
+
+        merged_kwargs = kwargs.copy()
+        params = self.default_params.copy()
+        params.update(kwargs.pop('params', {}) or {})
+        merged_kwargs.update({'params': params})
+        return merged_kwargs
 
     @staticmethod
     def url_for(path):
         return str(path)
+
+    def handle_exception(self, api_exception):
+        raise api_exception
 
 
 class OAuth2Api(Api):
@@ -142,10 +147,10 @@ class OAuth2Api(Api):
         import requests_oauthlib
         super(OAuth2Api, self).__init__(base_url, requests_oauthlib.OAuth2Session())
 
-    def use_access_token(self, access_token, included_params=True):
+    def use_access_token(self, access_token, included_in_params=True):
         if access_token:
             self._session.token = {'access_token': access_token}
-            if included_params:
+            if included_in_params:
                 self.default_params.update(self._session.token)
         return self
 

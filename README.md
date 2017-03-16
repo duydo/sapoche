@@ -1,4 +1,5 @@
 Sapoche - A Social Data Platform
 ================================
-In development...
+
+## Social Api: sapoche.social_api
 
