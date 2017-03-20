@@ -1,9 +1,9 @@
-from sapoche.social_api.base import OAuth2Api
+from sapoche.social.api import SocialApi
 
 __author__ = 'duydo'
 
 
-class Instagram(OAuth2Api):
+class Instagram(SocialApi):
     BASE_URL = 'https://api.instagram.com'
     VERSION = 'v1'
 
