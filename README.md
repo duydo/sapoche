@@ -2,5 +2,5 @@
 
 
 
-## Package: sapoche.social_api
+## Package: sapoche.social
 In development...
