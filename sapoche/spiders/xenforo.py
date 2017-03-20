@@ -1,7 +1,4 @@
-from scrapy import Item
-from scrapy.loader import ItemLoader
-from scrapy.spiders import CrawlSpider, Rule
-from scrapy.linkextractors import LinkExtractor
+import scrapy
 
 __author__ = 'duydo'
 
@@ -15,33 +12,31 @@ class AnyItem(Item):
         self._values[key] = value
 
 
-class XenForoSpider(CrawlSpider):
-    item = AnyItem
+class XenForoSpider(scrapy.Spider):
+    def parse(self, response):
+        for forum_url in response.css('.nodeTitle a::attr(href)').extract():
+            forum_url = response.urljoin(forum_url)
+            yield scrapy.Request(url=forum_url, callback=self.parse_forum_urls)
 
-    rules = (
-        Rule(LinkExtractor(allow=(r'forums/',)), follow=True),
-        Rule(LinkExtractor(allow=(r'threads/',)), callback='parse_thread', follow=True),
-    )
+    def parse_forum_urls(self, response):
+        link_group = response.css('.pageNavLinkGroup')
+        if link_group:
+            link_group = link_group[0]
+            data_start = link_group.css('.PageNav::attr(data-start)').extract()
+            data_last = link_group.css('.PageNav::attr(data-last)').extract()
+            if data_start and data_last:
+                for page in range(int(data_start[0]), int(data_last[0])):
+                    page_url = '%spage-%s' % (response.url, page)
+                    yield scrapy.Request(url=page_url, callback=self.parse_post_urls)
+        self.parse_post_urls(response)
 
-    fields = {
-        'title': r'//*[@class="titleBar"]/h1//text()',
-        'body': r'//*[@class="messageInfo primaryContent"]/div[@class="messageContent"]/article//text()'
-    }
+    def parse_post_urls(self, response):
+        for post_url in response.css('.title a::attr(href)').extract():
+            post_url = response.urljoin(post_url)
+            yield scrapy.Request(url=post_url, callback=self.parse_posts)
 
-    custom_settings = {
-        'DEFAULT_REQUEST_HEADERS': {
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en',
-            'Referer': 'https://otosaigon.com'
-        },
-        'DOWNLOAD_DELAY': 15
-    }
-
-    def parse_thread(self, response):
-        item = self.item()
-        item['link'] = response.url
-        for field, xpath in self.fields.iteritems():
-            value = response.xpath(xpath).extract()
-            item[field] = value
-            self.logger.info(len(value))
-        yield item
+    def parse_posts(self, response):
+        for message in response.css('.messageList .message'):
+            text = message.css('.messageText::text').extract()
+            if text:
+                print text[0].strip()

@@ -2,18 +2,22 @@ import unittest
 import logging
 
 from sapoche.social.api import SocialApi, TokenPlace
+from sapoche.social.providers import Instagram
+from sapoche.social.providers.youtube import Youtube
 
 __author__ = 'duydo'
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.ERROR)
 
 
 class SocialApiTest(unittest.TestCase):
     def test_instagram_api(self):
-        base_url = 'https://api.instagram.com/v1'
         access_token = '1723335225.f71bc46.7f63afcbe3a64635b3531ea2c5753ba5'
 
-        api = SocialApi(base_url, access_token, access_token_place=TokenPlace.QUERY)
+        # base_url = 'https://api.instagram.com/v1'
+        # api = SocialApi(base_url, access_token, access_token_place=TokenPlace.QUERY)
+        # or
+        api = Instagram(access_token)
 
         """/users/self"""
         r = api.users.self()
@@ -34,16 +38,11 @@ class SocialApiTest(unittest.TestCase):
         r = api.users.search({'q': 'duy'})
         self.assertTrue(len(r.body.data) >= 1)
 
-    def test_youtube(self):
-        key = 'AIzaSyA3WjUxG2OG7Lkwze8_e8rqEt3xOkSWqKo'
-        api = SocialApi('https://www.googleapis.com/youtube/v3')
-        params = {
-            'id': 'JGwWNGJdvx8',
-            'part': 'statistics',
-            'key': key
-        }
-        r = api.videos(params)
-        for item in r.data['items']:
+    def youtube(self):
+        access_token = '<your access token>'
+        api = Youtube(access_token)
+        r = api.videos({'id': 'JGwWNGJdvx8', 'part': 'statistics'})
+        for item in r.body.data['items']:
             print item.statistics
 
 

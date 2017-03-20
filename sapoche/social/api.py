@@ -197,16 +197,12 @@ class Api(object):
     @session.setter
     def session(self, value):
         self._session = value
-        self.on_session_set(self._session)
         return self
 
     def attach_params(self, **kwargs):
         """Attach custom params for all requests."""
         self._session.params.update(kwargs)
         return self
-
-    def on_session_set(self, session):
-        pass
 
 
 class TokenPlace:
@@ -228,16 +224,13 @@ class SocialApi(Api):
     
     r = api.foo.bar() # endpoint foo/bar 
     print r.body 
-    
     """
 
     def __init__(self, base_url=None, access_token=None, access_token_name=None, access_token_place=None):
         super(SocialApi, self).__init__(base_url)
-
         self._access_token_name = access_token_name or 'access_token'
         self._access_token_place = access_token_place
-        self.session = self.create_oauth2_session(token_place=self._access_token_place)
-        self.access_token = access_token
+        self.init_session(access_token, access_token_name=access_token_name, access_token_place=access_token_place)
 
     def fetch_token(self, token_url=None, client_id=None, client_secret=None, **kwargs):
         check_not_empty(token_url)
@@ -256,18 +249,30 @@ class SocialApi(Api):
             **kwargs
         )
 
-    @staticmethod
-    def create_oauth2_session(client=None, client_id=None, token_place=None, **kwargs):
-        import requests_oauthlib
-        return requests_oauthlib.OAuth2Session(
-            client=client or BackendApplicationClient(client_id=client_id, default_token_placement=token_place),
-            **kwargs
-        )
-
     @property
     def access_token(self):
         return getattr(self.session, self._access_token_name, None)
 
-    @access_token.setter
-    def access_token(self, value):
-        self.session.token = {self._access_token_name: check_not_empty(value)}
+    def token(self, access_token):
+        self.session.token = {self._access_token_name: check_not_empty(access_token)}
+        return self
+
+    def on_before_request(self, url, headers, data):
+        return url, headers, data
+
+    def init_session(self, access_token, access_token_name=None, access_token_place=None,
+                     client=None, client_id=None, **kwargs):
+        check_not_empty(access_token)
+        import requests_oauthlib
+        client = client or BackendApplicationClient(
+            client_id=client_id,
+            default_token_placement=access_token_place or self._access_token_place
+        )
+        self.session = requests_oauthlib.OAuth2Session(
+            client=client,
+            token={access_token_name or self._access_token_name: access_token},
+            **kwargs
+        )
+        self.session.register_compliance_hook('protected_request', self.on_before_request)
+        # self.session.register_compliance_hook('access_token_response', self.on_access_token_response)
+        # self.session.register_compliance_hook('refresh_token_response', self.on_refresh_token_response)
