@@ -1,3 +1,5 @@
+import re
+
 import scrapy
 
 __author__ = 'duydo'
@@ -13,30 +15,57 @@ class AnyItem(Item):
 
 
 class XenForoSpider(scrapy.Spider):
+    PATTERN_ID = r'(\.){1}(\d+)'
+    ID_GROUP = 2
+    allowed_domains = []
+    _seen_urls = set()
+
+    rules = {
+        'forum': '.nodeList .node .nodeInfo .nodeText .nodeTitle a::attr(href)',
+        'topic': '.discussionListItems .discussionListItem .listBlock .title a::attr(href)'
+    }
+
+    def is_allowed(self, url):
+        yes = not self.allowed_domains
+        for domain in self.allowed_domains:
+            yes = domain in url
+        return yes
+
     def parse(self, response):
-        for forum_url in response.css('.nodeTitle a::attr(href)').extract():
-            forum_url = response.urljoin(forum_url)
-            yield scrapy.Request(url=forum_url, callback=self.parse_forum_urls)
+        for forum_url in self.parse_forum(response):
+            if self.is_allowed(forum_url):
+                if forum_url not in self._seen_urls:
+                    self._seen_urls.add(forum_url)
+                    self.logger.info('[FORUM-%s] %s', self.parse_ID(forum_url), forum_url)
+                    yield scrapy.Request(forum_url, callback=self.parse)
+                    #
+                    # for topic_url in self.parse_topic(response):
+                    #     self.logger.info('[TOPIC-%s] %s', self.parse_ID(topic_url), topic_url)
 
-    def parse_forum_urls(self, response):
-        link_group = response.css('.pageNavLinkGroup')
-        if link_group:
-            link_group = link_group[0]
-            data_start = link_group.css('.PageNav::attr(data-start)').extract()
-            data_last = link_group.css('.PageNav::attr(data-last)').extract()
-            if data_start and data_last:
-                for page in range(int(data_start[0]), int(data_last[0])):
-                    page_url = '%spage-%s' % (response.url, page)
-                    yield scrapy.Request(url=page_url, callback=self.parse_post_urls)
-        self.parse_post_urls(response)
+    def parse_forum(self, response):
+        forum_rule = self.rules['forum']
+        for forum_url in response.css(forum_rule).extract():
+            yield response.urljoin(forum_url)
 
-    def parse_post_urls(self, response):
-        for post_url in response.css('.title a::attr(href)').extract():
-            post_url = response.urljoin(post_url)
-            yield scrapy.Request(url=post_url, callback=self.parse_posts)
+    def parse_topic(self, response):
+        for post_url in response.css(self.rules['topic']).extract():
+            yield response.urljoin(post_url)
 
-    def parse_posts(self, response):
+    def parse_message(self, response):
+        self.logger.info('Visit: %s', response.url)
         for message in response.css('.messageList .message'):
-            text = message.css('.messageText::text').extract()
-            if text:
-                print text[0].strip()
+            message_text = message.css('.messageText::text').extract()
+            user_info = message.css('.messageUserInfo a[class ~= username]')
+            user_url = user_info.css('::attr(href)').extract()
+            user_name = user_info.css('::text').extract()
+            message = {
+                'url': response.url,
+                'content': message_text[0].strip() if message_text else None,
+                'user_url': response.urljoin(user_url[0]),
+                'user_name': user_name[0].strip()
+            }
+            yield message
+
+    def parse_ID(self, url, pattern=None, group=2):
+        m = re.search(pattern or self.PATTERN_ID, url)
+        return m.group(group) if m else None
