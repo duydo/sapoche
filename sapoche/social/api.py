@@ -4,7 +4,7 @@ import requests
 from oauthlib.oauth2 import BackendApplicationClient
 from requests.auth import HTTPBasicAuth
 
-from sapoche.helpers.preconditions import check_type, check_not_empty
+from sapoche.helpers import check_type, check_not_empty
 
 __author__ = 'duydo'
 

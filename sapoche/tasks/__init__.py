@@ -1,5 +1,4 @@
-from sapoche.factory import create_celery_app
+from ..core import flask_celery
 
-__author__ = 'duydo'
-
-app = create_celery_app()
+# Celery app instance
+celery = flask_celery.celery

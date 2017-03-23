@@ -1,2 +1,3 @@
+"""Celery Settings"""
 
-__author__ = 'duydo'
+imports = ('sapoche.tasks.math',)

@@ -1,6 +1,6 @@
 import json
 
-from sapoche.helpers.preconditions import check_not_empty
+from sapoche.helpers import check_not_empty
 from sapoche.social.api import SocialApi
 
 __author__ = 'duydo'

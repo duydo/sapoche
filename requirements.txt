@@ -1,4 +1,32 @@
-requests
-requests-oauthlib
-celery
-Scrapy
+flask>=0.12
+celery>=4.0.2
+Scrapy>=1.3.2
+
+# Database
+Flask-SQLAlchemy>=2.2
+psycopg2>=2.7.1
+SQLAlchemy>=1.1.6
+
+# Requests
+requests>=2.11.1
+requests-oauthlib>=0.7.0
+
+# Migrate
+Flask-Migrate>=2.0.3
+
+
+# Caching
+Flask-Caching>=1.0.0
+
+
+# Flask Restful
+flask-restful>=0.3.5
+
+# Flask security
+Flask-Security>=1.7.5
+
+Werkzeug>=0.9.1
+
+
+# Deployment
+gunicorn>=19.1.1
